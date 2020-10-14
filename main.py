@@ -1,8 +1,9 @@
+import json
 import os
 import sys
 
 from PySide2 import QtCore, QtWidgets
-import multiprocessing
+
 import db
 from main_window import Ui_MainWindow
 
@@ -12,20 +13,25 @@ class Win(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self):
         super(Win, self).__init__()
         self.setupUi(self)
-        self.ids=[]
+        self.ids = []
         self.db_update.triggered.connect(self.get_file)
         self.NickName_rdr.toggled.connect(self.rdr_toggle)
         self.PhoneNumber_rdr.toggled.connect(self.rdr_toggle)
         self.Surname_rdr.toggled.connect(self.rdr_toggle)
         self.pushButton.clicked.connect(self.search_click)
+        self.save_btn.triggered.connect(self.save_in_file)
         self.add_btn.setVisible(False)
+        self.update_btn.setEnabled(False)
+        self.remove_btn.setEnabled(False)
+        self.data = {}
+        self.load_btn.triggered.connect(self.load_from_file)
         self.add_btn.clicked.connect(self.add_in_db)
         self.create_btn.triggered.connect(self.clear_row)
         self.update_btn.triggered.connect(self.update_in_db)
         self.remove_btn.triggered.connect(self.remove_from_db)
         self.select_page_btn.clicked.connect(self.select_page)
         self.select_page_btn.setEnabled(False)
-        self.write_table({},0)
+        self.write_table({}, 0)
 
     def get_file(self) -> None:
         file = QtWidgets.QFileDialog.getOpenFileName(self, 'Выберите файл:')
@@ -34,18 +40,15 @@ class Win(QtWidgets.QMainWindow, Ui_MainWindow):
         self.parse(file[0])
 
     def select_page(self):
-        self.write_table({},self.comboBox.currentIndex())
+        self.write_table({}, self.comboBox.currentIndex())
 
-    def parse(self,path:str):
+    def parse(self, path: str):
         self.setEnabled(False)
-        self.data={}
+        self.data = {}
         path_file = path
         if os.path.isfile(path_file) is False:
             self.message_box('Неправильный путь')
             return
-        # self.findPath_btn.setEnabled(False)
-        # self.check_btn.setEnabled(False)
-        # self.pushButton.setEnabled(False)
         size_file = os.path.getsize(path_file)
         ewq = []
         with open(path_file, 'r', encoding='latin-1') as file:
@@ -56,7 +59,6 @@ class Win(QtWidgets.QMainWindow, Ui_MainWindow):
 
         progress_proc = (size_file / size) * 100
         progress_proc = int(progress_proc) - 1
-        print(size_file, size, progress_proc)
         p = QtWidgets.QProgressDialog(str("Load data in database"), "Cancel", 0, progress_proc)
         p.setMinimumDuration(0)
         p.setWindowTitle('plz, wait')
@@ -68,7 +70,7 @@ class Win(QtWidgets.QMainWindow, Ui_MainWindow):
             header = ["sys_num", "name", "fname", "phone", "uid", "nik", "wo"]
             for line in log_file:
                 p.setValue(j)
-                if counter==-1:
+                if counter == -1:
                     counter += 1
                     continue
                 counter += 1
@@ -79,8 +81,8 @@ class Win(QtWidgets.QMainWindow, Ui_MainWindow):
                 for n in range(0, len(header)):
                     doc[header[n]] = qwe[n + 1]
                 ewq.append(doc)
-                if counter%100==0:
-                    self.comboBox.addItem(f'{counter//100}')
+                if counter % 100 == 0:
+                    self.comboBox.addItem(f'{counter // 100}')
                 if counter == 10000:
                     db.create_many(ewq)
                     ewq = []
@@ -90,15 +92,18 @@ class Win(QtWidgets.QMainWindow, Ui_MainWindow):
         if len(ewq) > 0:
             db.create_many(ewq)
         p.setValue(progress_proc)
-        self.write_table({},0)
+        self.write_table({}, 0)
         self.prekol.setText('')
         self.select_page_btn.setEnabled(True)
         self.setEnabled(True)
+        self.update_btn.setEnabled(True)
+        self.remove_btn.setEnabled(True)
 
-    def combobox_count(self,data,multiply):
+    def combobox_count(self, data, multiply):
         k = 0
         j = 0
-        info=db.read(data,0,100)
+        print(data)
+        info = db.read(data, 0, 100)
         flag = False
         self.comboBox.clear()
         for i in info:
@@ -114,15 +119,12 @@ class Win(QtWidgets.QMainWindow, Ui_MainWindow):
         else:
             self.comboBox.addItem("Остаток")
         header = ["sys_num", "name", "fname", "phone", "uid", "nik", "wo"]
-        print('1')
         self.table.setColumnCount(len(header))
         self.table.setHorizontalHeaderLabels(header)
         self.table.setRowCount(0)
         row = 0
-        print(info)
-        result=db.read({},multiply,100)
+        result = db.read({}, multiply, 100)
         for dic in result:
-            print('2')
             self.table.insertRow(self.table.rowCount())
             col = 0
             for key, value in dic.items():
@@ -131,15 +133,15 @@ class Win(QtWidgets.QMainWindow, Ui_MainWindow):
                     continue
                 kek = QtWidgets.QTableWidgetItem()
                 kek.setData(QtCore.Qt.DisplayRole, value)
-                print(value)
                 self.table.setItem(row, col, QtWidgets.QTableWidgetItem(value))
                 col += 1
             row += 1
         self.prekol.setText('')
         self.select_page_btn.setEnabled(True)
 
-    def write_table(self,data,multipy):
+    def write_table(self, data, multipy):
         header = ["sys_num", "name", "fname", "phone", "uid", "nik", "wo"]
+        self.table.clear()
         self.table.setColumnCount(len(header))
         self.table.setHorizontalHeaderLabels(header)
         self.table.setRowCount(0)
@@ -162,47 +164,40 @@ class Win(QtWidgets.QMainWindow, Ui_MainWindow):
         self.add_btn.setEnabled(False)
         self.remove_btn.setEnabled(False)
         self.pushButton.setEnabled(False)
-        self.pushButton_2.setEnabled(False)
         self.select_page_btn.setEnabled(False)
         if self.NickName_rdr.isChecked():
-            self.combobox_count({'nik':self.FInd_txt.toPlainText()},0)
-            self.write_table({'nik':self.FInd_txt.toPlainText()},0)
-            self.data={'nik':self.FInd_txt.toPlainText()}
+            self.combobox_count({'nik': self.FInd_txt.toPlainText()}, 0)
+            self.write_table({'nik': self.FInd_txt.toPlainText()}, 0)
+            self.data = {'nik': self.FInd_txt.toPlainText()}
         elif self.PhoneNumber_rdr.isChecked():
-            self.combobox_count({'phone': self.FInd_txt.toPlainText()},0)
+            self.combobox_count({'phone': self.FInd_txt.toPlainText()}, 0)
             self.write_table({'phone': self.FInd_txt.toPlainText()}, 0)
             self.data = {'phone': self.FInd_txt.toPlainText()}
         elif self.Surname_rdr.isChecked():
-            self.combobox_count({'fname': self.FInd_txt.toPlainText()},0)
+            self.combobox_count({'fname': self.FInd_txt.toPlainText()}, 0)
             self.write_table({'fname': self.FInd_txt.toPlainText()}, 0)
             self.data = {'fname': self.FInd_txt.toPlainText()}
+        self.prekol.setVisible(False)
+        self.select_page_btn.setEnabled(True)
         self.update_btn.setEnabled(True)
         self.add_btn.setEnabled(True)
         self.remove_btn.setEnabled(True)
         self.pushButton.setEnabled(True)
-        self.pushButton_2.setEnabled(True)
         self.select_page_btn.setEnabled(True)
+        self.update_btn.setEnabled(True)
+        self.remove_btn.setEnabled(True)
 
-
-
-    def rdr_toggle(self)->None:
+    def rdr_toggle(self) -> None:
         self.Find_lbl.setText('')
         if self.NickName_rdr.isChecked():
             self.Find_lbl.setText('Введите логин:')
             self.FInd_txt.setText('')
-            self.Find_txt.setEnabled(True)
-            self.pushButton.setText('Сортировать')
         if self.PhoneNumber_rdr.isChecked():
             self.Find_lbl.setText('Введите телефон:')
             self.FInd_txt.setText('')
-            self.Find_txt.setEnabled(True)
-            self.button.setText('Сортировать')
-            self.FInd_txt.setText('')
         if self.Surname_rdr.isChecked():
             self.Find_lbl.setText('Введите ФИО:')
-            self.Find_txt.setEnabled(True)
             self.FInd_txt.setText('')
-            self.button.setText('Сортировать')
         self.button.setEnabled(True)
 
     def clear_row(self):
@@ -219,8 +214,9 @@ class Win(QtWidgets.QMainWindow, Ui_MainWindow):
         except AttributeError:
             QtWidgets.QMessageBox.about(self, 'Ошибка', f'{i + 1}  колонка пустая')
             return 1
-        db.create({header[0]:data[0], header[1]:data[1], header[2]:data[2], header[3]:data[3], header[4]:data[4], header[5]:data[5], header[6]:data[6]})
-        QtWidgets.QMessageBox.about(self, 'Успешно','Элемент в базе!')
+        db.create({header[0]: data[0], header[1]: data[1], header[2]: data[2], header[3]: data[3], header[4]: data[4],
+                   header[5]: data[5], header[6]: data[6]})
+        QtWidgets.QMessageBox.about(self, 'Успешно', 'Элемент в базе!')
         self.table.setRowCount(0)
         self.add_btn.setVisible(False)
 
@@ -246,8 +242,37 @@ class Win(QtWidgets.QMainWindow, Ui_MainWindow):
         data = []
         for column in range(max):
             data.append(self.table.item(current_row, column).text())
-        db.update(id, {header[0]:data[0], header[1]:data[1], header[2]:data[2], header[3]:data[3], header[4]:data[4], header[5]:data[5], header[6]:data[6]})
+        db.update(id,
+                  {header[0]: data[0], header[1]: data[1], header[2]: data[2], header[3]: data[3], header[4]: data[4],
+                   header[5]: data[5], header[6]: data[6]})
         QtWidgets.QMessageBox.about(self, 'Успешно', 'Элемент обновлен!')
+
+    def save_in_file(self):
+        if self.data == {}:
+            QtWidgets.QMessageBox.about(self, 'Ошибка', 'Пустота!')
+        else:
+            save = QtWidgets.QFileDialog.getSaveFileName(self, "Введите имя файла", "(*.json)")
+            if save[0] != '':
+                lol = [self.data]
+                dic = {}
+                save_data = db.read(self.data, 0, 0)
+                for kek in save_data:
+                    for key, value in kek.items():
+                        if key == "_id":
+                            continue
+                        dic.update({key: value})
+                    lol.append(dic)
+                    dic={}
+                print(lol)
+                with open(save[0], 'w')as save_file:
+                    json.dump(lol, save_file)
+
+    def load_from_file(self):
+        open_load_file = QtWidgets.QFileDialog.getOpenFileName(self, "Выберите файл", '(*.json)')
+        with open(open_load_file[0], 'r')as load_file:
+            data = json.load(load_file)
+            self.write_table(data[0], 0)
+        self.combobox_count(data[0], 0)
 
 
 if __name__ == '__main__':
