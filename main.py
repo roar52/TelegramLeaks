@@ -32,6 +32,7 @@ class Win(QtWidgets.QMainWindow, Ui_MainWindow):
         self.select_page_btn.clicked.connect(self.select_page)
         self.select_page_btn.setEnabled(False)
         self.write_table({}, 0)
+        self.prekol.setText('')
 
     def get_file(self) -> None:
         file = QtWidgets.QFileDialog.getOpenFileName(self, 'Выберите файл:')
@@ -169,6 +170,7 @@ class Win(QtWidgets.QMainWindow, Ui_MainWindow):
             self.combobox_count({'nik': self.FInd_txt.toPlainText()}, 0)
             self.write_table({'nik': self.FInd_txt.toPlainText()}, 0)
             self.data = {'nik': self.FInd_txt.toPlainText()}
+            self.prekol.setText('')
         elif self.PhoneNumber_rdr.isChecked():
             self.combobox_count({'phone': self.FInd_txt.toPlainText()}, 0)
             self.write_table({'phone': self.FInd_txt.toPlainText()}, 0)
@@ -198,7 +200,6 @@ class Win(QtWidgets.QMainWindow, Ui_MainWindow):
         if self.Surname_rdr.isChecked():
             self.Find_lbl.setText('Введите ФИО:')
             self.FInd_txt.setText('')
-        self.button.setEnabled(True)
 
     def clear_row(self):
         self.table.setRowCount(0)
@@ -251,7 +252,7 @@ class Win(QtWidgets.QMainWindow, Ui_MainWindow):
         if self.data == {}:
             QtWidgets.QMessageBox.about(self, 'Ошибка', 'Пустота!')
         else:
-            save = QtWidgets.QFileDialog.getSaveFileName(self, "Введите имя файла", "(*.json)")
+            save = QtWidgets.QFileDialog.getSaveFileName(self, 'Введите имя файла','/Users/nikitakirillov/Desktop ', '(*.json)')
             if save[0] != '':
                 lol = [self.data]
                 dic = {}
@@ -263,16 +264,23 @@ class Win(QtWidgets.QMainWindow, Ui_MainWindow):
                         dic.update({key: value})
                     lol.append(dic)
                     dic={}
-                print(lol)
                 with open(save[0], 'w')as save_file:
                     json.dump(lol, save_file)
 
     def load_from_file(self):
-        open_load_file = QtWidgets.QFileDialog.getOpenFileName(self, "Выберите файл", '(*.json)')
+        open_load_file = QtWidgets.QFileDialog.getOpenFileName(self, "Выберите файл")
+        self.select_page_btn.setEnabled(False)
+        self.prekol.setVisible(True)
         with open(open_load_file[0], 'r')as load_file:
-            data = json.load(load_file)
-            self.write_table(data[0], 0)
-        self.combobox_count(data[0], 0)
+            try:
+                data = json.load(load_file)
+            except json.JSONDecodeError:
+                QtWidgets.QMessageBox.about(self, 'Ошибка', 'Файл должен быть в формате JSON')
+            # self.combobox_count(data[0], 0)
+            else:
+                self.write_table(data[0], 0)
+
+
 
 
 if __name__ == '__main__':

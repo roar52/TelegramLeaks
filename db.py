@@ -2,7 +2,7 @@ import pymongo
 
 client = pymongo.MongoClient()
 db = client["telegramLeaks"]
-collection = db["telega1"]
+collection = db["telega"]
 
 
 def create_many(data):
