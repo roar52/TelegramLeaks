@@ -36,9 +36,8 @@ class Win(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def get_file(self) -> None:
         file = QtWidgets.QFileDialog.getOpenFileName(self, 'Выберите файл:')
-        # self.path_txt.setText(file[0])
-        # self.check_btn.setEnabled(True)
-        self.parse(file[0])
+        if file[0] != '':
+            self.parse(file[0])
 
     def select_page(self):
         self.write_table({}, self.comboBox.currentIndex())
@@ -149,6 +148,7 @@ class Win(QtWidgets.QMainWindow, Ui_MainWindow):
         row = 0
         info = db.read(data, multipy, 100)
         for dic in info:
+            print(dic)
             self.table.insertRow(self.table.rowCount())
             col = 0
             for key, value in dic.items():
@@ -252,7 +252,8 @@ class Win(QtWidgets.QMainWindow, Ui_MainWindow):
         if self.data == {}:
             QtWidgets.QMessageBox.about(self, 'Ошибка', 'Пустота!')
         else:
-            save = QtWidgets.QFileDialog.getSaveFileName(self, 'Введите имя файла','/Users/nikitakirillov/Desktop ', '(*.json)')
+            save = QtWidgets.QFileDialog.getSaveFileName(self, 'Введите имя файла', '/Users/nikitakirillov/Desktop ',
+                                                         '(*.json)')
             if save[0] != '':
                 lol = [self.data]
                 dic = {}
@@ -263,7 +264,7 @@ class Win(QtWidgets.QMainWindow, Ui_MainWindow):
                             continue
                         dic.update({key: value})
                     lol.append(dic)
-                    dic={}
+                    dic = {}
                 with open(save[0], 'w')as save_file:
                     json.dump(lol, save_file)
 
@@ -279,8 +280,6 @@ class Win(QtWidgets.QMainWindow, Ui_MainWindow):
             # self.combobox_count(data[0], 0)
             else:
                 self.write_table(data[0], 0)
-
-
 
 
 if __name__ == '__main__':
